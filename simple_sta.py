@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def calc_simple_sta(stimulus, spike_train, start = 0, end = 1):
+def calc_sta(stimulus, spike_train, start = 0, end = 1):
     """
     Calculates the spike-triggered average (STA) of a 2D stimulus of shape [time, x, y]
     
@@ -12,7 +12,7 @@ def calc_simple_sta(stimulus, spike_train, start = 0, end = 1):
         end (int): End offset relative to each spike time. (exclusive!)
 
     Returns:
-        sta: The average stimulus that caused a spike with respect to the given window (start/end).
+        sta (np.ndarray): 3D array of shape [lag, height, width]. Height and width contain the average stimulus that caused a spike with respect to the given window (start/end) and in terms of lags.
     
     Note:
         By default start and end are set to take only the stimulus that was present during each spike.
@@ -45,23 +45,11 @@ def calc_simple_sta(stimulus, spike_train, start = 0, end = 1):
             
         spike_count += 1
 
-    if spike_count == 0:
-        raise ValueError('No patterns found. The heck?')
-
     sta /= spike_count
-    sta -= sta.mean()  # Skipping this has actually given less noisy results
+    # sta -= sta.mean()  # Skipping this has actually given less noisy results
     
+    for i_lag in range(n_lags): # And I think I have to do this
+        sta[i_lag] -= sta[i_lag].mean()
+
     return sta
 
-def plot_simple_sta(sta, filter, start, end):
-    n_lags = end - start
-    
-    fig, axs = plt.subplots(1, n_lags + 1, figsize=(3*(n_lags + 1), 4))
-    for i_lag in range(n_lags): 
-        im = axs[i_lag].imshow(sta[i_lag], vmin=-2, vmax=2, cmap="seismic") 
-        axs[i_lag].set_title(f"lag {i_lag + start}") 
-
-    filt_im = axs[-1].imshow(filter, vmin=-2, vmax=2, cmap="seismic") 
-    axs[-1].set_title("Filter") 
-
-    fig.colorbar(filt_im, ax=axs.ravel().tolist(), label="Intensity")
