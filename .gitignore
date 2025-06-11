@@ -1,2 +1,6 @@
 # Currently these are the file formats of synthetic data. As this can get quite big I'm stopping them from being uploaded.
 *.npy
+
+
+# Pycache
+__pycache__
