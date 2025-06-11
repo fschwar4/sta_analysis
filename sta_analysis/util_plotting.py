@@ -49,3 +49,4 @@ def plot_simple_sta_lags(sta, filter, start, end):
     axs[-1].set_title("Filter") 
 
     fig.colorbar(filt_im, ax=axs.ravel().tolist(), label="Intensity")
+    

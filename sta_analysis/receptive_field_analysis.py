@@ -1,8 +1,8 @@
 import toml
 import numpy as np
-from utils.plotter import *
+import matplotlib.pyplot as plt
 
-class SpikeAnalysis:
+class STA:
     def __init__(self, stimulus, spike_train, filter, config_file:str='config.toml'):
         with open(config_file, "r") as f:
             config = toml.load(f)
@@ -98,8 +98,8 @@ class SpikeAnalysis:
             spike_count += 1
 
         # trim excess rows, im not sure if i need this
-        # for i_lag in range(n_lags):
-        #     stimuli[i_lag] = stimuli[i_lag][:spike_count]
+        for i_lag in range(n_lags):
+            stimuli[i_lag] = stimuli[i_lag][:spike_count]
 
         # now get stc for each lag
         stc_list = []
@@ -132,10 +132,63 @@ class SpikeAnalysis:
 
         return stc_list, stc_minus_C_list, eigen_results
 
-    
 
+    def calc_stc_simplified(self):
+        spikes, = np.where(self.spike_train == 1)
+        if spikes.size == 0:
+            raise ValueError('No spikes found.')
+        
+        n_lags = self.end - self.start
+        height, width, n_times = self.stimulus.shape
+        n_pixels = height * width
+        n_spikes = len(spikes)
 
+        stc_list = []
+        for i_lag in range(n_lags):
+            stimuli = np.zeros((n_spikes, n_pixels))
+            valid_spikes = 0
 
+            for i, spike in enumerate(spikes):
+                window_start = spike + self.start
+                window_end = spike + self.end
+                if window_start < 0 or window_end > n_times:
+                    continue
+
+                time_point = window_start + i_lag
+                stimuli[valid_spikes] = self.stimulus[:, :, time_point].flatten()
+                valid_spikes += 1
+
+            if valid_spikes == 0:
+                raise ValueError(f'No valid spikes found for lag {i_lag + self.start}.')
+
+            stimuli = stimuli[:valid_spikes]
+
+            sta_flat = self.sta[:, :, i_lag].flatten()
+            centered = stimuli - sta_flat
+
+            stc = np.dot(centered.T, centered) / (valid_spikes - 1)
+            stc_list.append(stc)
+
+        all_stimuli = np.reshape(self.stimulus, (n_pixels, n_times)).T
+        all_stimuli_centered = all_stimuli - all_stimuli.mean(axis=0)
+        C = np.dot(all_stimuli_centered.T, all_stimuli_centered) / (n_times - 1)
+
+        stc_minus_C_list = [stc - C for stc in stc_list]
+
+        eigen_results = []
+        for i_lag in range(n_lags):
+            matrix = stc_minus_C_list[i_lag]
+            eigenvalues, eigenvectors = np.linalg.eigh(matrix)
+            idx = eigenvalues.argsort()[::-1]
+            eigenvalues = eigenvalues[idx]
+            eigenvectors = eigenvectors[:, idx]
+            eigen_results.append((eigenvalues, eigenvectors))
+
+        self.stc = stc_list
+        self.stc_minus_C = stc_minus_C_list
+        self.eigen_results = eigen_results
+
+        return stc_list, stc_minus_C_list, eigen_results
 
 
 

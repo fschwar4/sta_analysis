@@ -30,3 +30,4 @@ def calc_cosine_similarity(array1, array2):
     array2 = array2.ravel()
     cos_sim = dot(array1, array2) / (norm(array1) * norm(array2))
     return cos_sim
+    

@@ -1,6 +1,6 @@
-matplotlib
-numpy
-scipy
-sk-learn
-toml
-pandas
+matplotlib>=3.7.1
+numpy>=1.24.3
+scipy>=1.10.1
+scikit-learn>=1.2.2
+toml>=0.10.2
+pandas>=2.0.2
