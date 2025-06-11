@@ -204,3 +204,28 @@ class SpikeAnalysis:
         plt.suptitle("Top Eigenvectors per Lag + Average Across Lags")
         plt.show()
 
+    def plot_eigenvalue_spectrum(self, i_lag=0, abs_values=True, log_y=True):
+        """
+        Plot eigen-value versus index for the specified lag.
+
+        Parameters
+        ----------
+        lag : int
+            Index into self.eigen_results (default = 0).
+        """
+        if self.eigen_results is None:
+            raise RuntimeError("Run calc_stc() first")
+
+        # pick the eigen-values for the chosen lag
+        eigenvalues = self.eigen_results[i_lag][0]   # tuple = (eigenvalues, eigenvectors)
+
+        x = np.arange(1, len(eigenvalues) + 1)     # 1, 2, 3, ...
+        y = eigenvalues                            # plotted as-is
+
+        plt.figure(figsize=(4, 3))
+        plt.plot(x, y, marker='o')
+        plt.xlabel("Eigen-index")
+        plt.ylabel("Eigen-value")
+        plt.title(f"Eigen-value spectrum (lag {i_lag + self.start})")
+        plt.tight_layout()
+        plt.show()
