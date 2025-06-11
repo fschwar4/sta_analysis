@@ -2,3 +2,5 @@ matplotlib
 numpy
 scipy
 sk-learn
+toml
+pandas
