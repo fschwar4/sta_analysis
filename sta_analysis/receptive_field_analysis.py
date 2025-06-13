@@ -83,7 +83,7 @@ class RFAnalysis:
         self.raw_cov = RawCov
         self.eigen_results = (eigenvals, eigenvecs)
 
-    def _make_stim_rows_3d(self):
+    def _make_stim_rows(self):
         """
         Internal method to create time-embedded stimulus rows.
         Converts a 3D stimulus array [height, width, time] into a time-embedded format.
@@ -98,7 +98,7 @@ class RFAnalysis:
             stim_rows.append(window.flatten())
         return np.array(stim_rows)
 
-    def calc_stc_full_3d(self):
+    def calc_stc_full(self):
         """
         Computes STA, STC, RawMu, RawCov for a 3D stimulus [height, width, time] using time-embedding.
 
@@ -114,7 +114,7 @@ class RFAnalysis:
         
         """
         h, w, total_time = self.stimulus.shape
-        S = self._make_stim_rows_3d()  # [samples, n_time_lags * h * w]
+        S = self._make_stim_rows()  # [samples, n_time_lags * h * w]
         valid_spikes = self.spike_train[self.n_time_lags - 1:]  # Discard spikes during first n_time_lags-1 pre-window
 
         nspikes = np.sum(valid_spikes)
@@ -202,7 +202,7 @@ class RFAnalysis:
         fig, axs = plt.subplots(1, self.n_time_lags + 1, figsize=(3*(self.n_time_lags + 1), 4))
         for i_lag in range(self.n_time_lags): 
             im = axs[i_lag].imshow(self.sta[:, :, i_lag], vmin=-2, vmax=2, cmap="seismic") 
-            axs[i_lag].set_title(f"lag {i_lag + self.start}") 
+            axs[i_lag].set_title(f"lag {i_lag - self.n_time_lags + 1}") 
 
         filt_im = axs[-1].imshow(self.filter, vmin=-1, vmax=1, cmap="seismic") 
         axs[-1].set_title("Filter") 
@@ -243,7 +243,7 @@ class RFAnalysis:
             for lag in range(t):
                 ax = axes[lag]
                 im = ax.imshow(vec3d[:, :, lag], cmap='seismic', vmin=vmin, vmax=vmax)
-                ax.set_title(f'Lag {lag - self.n_time_lags}')
+                ax.set_title(f'Lag {lag - self.n_time_lags + 1}')
                 ax.axis('off')
             fig.suptitle(f'Eigenvector {n+1} (Eigenvalue: {eigenvals[n]:.2f})')
             fig.colorbar(im, ax=axes, fraction=0.045)
