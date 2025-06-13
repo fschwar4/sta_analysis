@@ -7,7 +7,7 @@ class STA:
         with open(config_file, "r") as f:
             config = toml.load(f)
         self.stimulus = stimulus.astype(np.float32).copy()
-        self.stimulus -= self.stimulus.mean()
+        # self.stimulus -= self.stimulus.mean()
         self.spike_train = spike_train
         self.filter = filter
         self.start = config["sta_parameters"]["start"]
@@ -111,9 +111,9 @@ class STA:
 
         # get overall stimulus covariance (C)
         all_stimuli = np.reshape(self.stimulus, (n_pixels, n_times)).T
-        # s0 = all_stimuli.mean(0, keepdims=True)
-        # C  = np.cov(all_stimuli - s0, rowvar=False, bias=False)
-        C = np.cov(all_stimuli, rowvar=False, bias=False)
+        s0 = all_stimuli.mean(0, keepdims=True)
+        C  = np.cov(all_stimuli - s0, rowvar=False, bias=False)
+        # C = np.cov(all_stimuli, rowvar=False, bias=False)
 
         # STC - C
         stc_minus_C_list = [stc - C for stc in stc_list]
@@ -123,7 +123,9 @@ class STA:
         for i_lag in range(n_lags):
             matrix = stc_minus_C_list[i_lag] 
             eigenvalues, eigenvectors = np.linalg.eigh(matrix)
-            eigenvectors 
+            idx = np.argsort(np.abs(eigenvalues))[::-1]
+            eigenvalues = eigenvalues[idx]
+            eigenvectors = eigenvectors[:, idx]
             eigen_results.append((eigenvalues, eigenvectors))
 
         self.stc = stc_list
@@ -142,6 +144,9 @@ class STA:
         height, width, n_times = self.stimulus.shape
         n_pixels = height * width
         n_spikes = len(spikes)
+
+        if self.sta is None:
+            self.calc_sta()
 
         stc_list = []
         for i_lag in range(n_lags):
@@ -165,7 +170,7 @@ class STA:
 
             sta_flat = self.sta[:, :, i_lag].flatten()
             centered = stimuli - sta_flat
-
+            
             stc = np.dot(centered.T, centered) / (valid_spikes - 1)
             stc_list.append(stc)
 
@@ -173,19 +178,19 @@ class STA:
         all_stimuli_centered = all_stimuli - all_stimuli.mean(axis=0)
         C = np.dot(all_stimuli_centered.T, all_stimuli_centered) / (n_times - 1)
 
-        stc_minus_C_list = [np.abs(stc - C) for stc in stc_list]  # Somehow abs gives better results
-        # stc_minus_C_list = [stc - C for stc in stc_list]
+        # stc_minus_C_list = [np.abs(stc - C) for stc in stc_list]  # Somehow abs gives better results
+        stc_minus_C_list = [stc - C for stc in stc_list]
 
         eigen_results = []
         for i_lag in range(n_lags):
             matrix = stc_minus_C_list[i_lag]
             eigenvalues, eigenvectors = np.linalg.eigh(matrix)
-            idx = eigenvalues.argsort()[::-1]
+            idx = np.abs(eigenvalues).argsort()[::-1]
             eigenvalues = eigenvalues[idx]
-            # eigenvectors = eigenvectors[:, idx]
+            eigenvectors = eigenvectors[:, idx]
             # eigenvectors = eigenvectors[:, idx] * np.sign(eigenvalues[idx])
             # eigenvectors = eigenvectors[:, idx] * eigenvalues[idx]
-            eigenvectors = eigenvectors[:, idx] * np.sign(eigenvectors[0, idx])
+            # eigenvectors = eigenvectors[:, idx] * np.sign(eigenvectors[0, idx])
             eigen_results.append((eigenvalues, eigenvectors))
 
         self.stc = stc_list
@@ -219,22 +224,22 @@ class STA:
 
         # go through the lags -----------------------------------------------------------
         for lag_idx, (eigenvalues, eigenvectors) in enumerate(self.eigen_results):
-            sorted_indices = np.argsort(np.abs(eigenvalues))[::-1]   # |λ| descending
-            order = np.argsort(np.abs(eigenvalues))[::-1]
+            # sorted_indices = np.argsort(np.abs(eigenvalues))[::-1]   # |λ| descending
+            # order = np.argsort(np.abs(eigenvalues))[::-1]
             for rank in range(top_n):
-                ev2d = eigenvectors[:, sorted_indices[rank]].reshape(height, width)
-                val   = eigenvalues[order[rank]]
+                ev2d = eigenvectors[:, rank].reshape(height, width)
+                val   = eigenvalues[rank]
                 # accumulate for later average
-                avg_sums[rank] += ev2d
-
+                avg_sums[rank] += ev2d * val
+                
                 # plot this lag
                 ax = axes[rank, lag_idx]
-                im = ax.imshow(ev2d, cmap=cmap)
+                im = ax.imshow(ev2d * val, cmap=cmap)
                 if rank == 0:
                     ax.set_title(f"Lag {lag_idx + self.start}\n"
-                            f"Idx: {order[rank]}: {val:.2f}")
+                            f"Idx: {rank}: {val:.2f}")
                 else:
-                    ax.set_title(f"Idx: {order[rank]}: {val:.2f}")
+                    ax.set_title(f"Idx: {rank}: {val:.2f}")
                 
                 ax.axis('off')
 
